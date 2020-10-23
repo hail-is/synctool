@@ -1,0 +1,41 @@
+synctool is a primitive tool for copying directories from Google
+Storage to Amazon S3.
+
+* Notes
+
+synctool uses GCP and AWS client libraries and it will automatically
+use any configured credentials.
+
+synctool syncs by copying files locally, so make sure you have enough
+local disk space for temporary files.  You will need space for the
+maximum file size times the parallelism.
+
+synctool skips files where the destination file exists and the source
+and destination files have the same md5 hash.  Note, Google Storage
+and S3 don't calculate md5 hashes for compound files (created the
+compose or multi-part uploads), so such files we be re-copied.
+
+* Installation
+
+$ https://github.com/hail-is/synctool.git
+$ python3 -m pip install ./synctool
+
+* Invoking
+
+$ python3 -m synctool -h
+usage: __main__.py [-h] [-u PROJECT] [-p PARALLELISM] source destination
+
+Copy directory from Google Storage to Amazon S3
+
+positional arguments:
+  source
+  destination
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -u PROJECT, --project PROJECT
+                        GCP project to be billed for requests. For requester
+                        pays buckets.
+  -p PARALLELISM, --parallelism PARALLELISM
+                        Number of files to transfer in parallel. Default is
+                        twice the CPU count.
