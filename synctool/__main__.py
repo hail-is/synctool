@@ -14,8 +14,10 @@ parser.add_argument(
     type=int,
     default=2 * os.cpu_count(),
     help='Number of files to transfer in parallel.  Default is twice the CPU count.')
-parser.add_argument('source')
-parser.add_argument('destination')
+parser.add_argument('source',
+                    help="Source directory.  Must be a Google Storage URL.  Must not end in a trailing slash.")
+parser.add_argument('destination',
+                    help="Destination directory.  Must be a AWS S3 URL.  Must not end in a trailing slash.")
 
 parsed_args = parser.parse_args()
 
