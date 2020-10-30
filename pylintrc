@@ -1,2 +1,2 @@
 [MESSAGES CONTROL]
-disable=line-too-long,too-many-locals,too-many-arguments,missing-module-docstring,missing-function-docstring,logging-fstring-interpolation,invalid-name
+disable=line-too-long,too-many-locals,too-many-arguments,missing-module-docstring,missing-function-docstring,logging-fstring-interpolation,invalid-name,broad-except,too-many-branches

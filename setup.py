@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = 'synctool',
-    version = '0.0.2',
+    version = '0.0.3',
     url = 'https://github.com/hail-is/synctool.git',
     author = 'Hail Team',
     author_email = 'hail@broadinstitute.org',

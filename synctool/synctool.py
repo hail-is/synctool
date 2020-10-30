@@ -2,8 +2,8 @@ import secrets
 import logging
 import os
 import binascii
-import base64
 import functools
+import base64
 import multiprocessing
 import google.cloud.storage
 import botocore
@@ -19,59 +19,63 @@ def sync_file(
         source_key, source_md5_hash):
     log = logging.getLogger(__name__)
 
-    # don't sync directory files
-    if source_key.endswith('/'):
-        return
-
-    assert source_key.startswith(source_path_prefix)
-    suffix = source_key[len(source_path_prefix):]
-    if suffix:
-        assert suffix.startswith('/')
-        suffix = suffix[1:]
-
-    if destination_path_prefix:
-        destination_key = f'{destination_path_prefix}/{suffix}'
-    else:
-        destination_key = f'{suffix}'
-
-    gcs_client = google.cloud.storage.Client()
-    s3_client = boto3.client('s3')
-
     try:
-        destination_resp = s3_client.head_object(Bucket=destination_bucket, Key=destination_key)
-        if source_md5_hash is not None:
-            destination_etag = destination_resp['ETag'].strip('"')
-            if destination_etag == source_md5_hash:
-                log.info(f"skipping {source_key} => {destination_key}, already exists")
-                return
-            log.warning(f"destination_key already exists, but md5 hash doesn't match: {source_key} {source_md5_hash} vs {destination_key} {destination_etag}")
+        # don't sync directory files
+        if source_key.endswith('/'):
+            return
+
+        assert source_key.startswith(source_path_prefix)
+        suffix = source_key[len(source_path_prefix):]
+        if suffix:
+            assert suffix.startswith('/')
+            suffix = suffix[1:]
+
+        if destination_path_prefix:
+            destination_key = f'{destination_path_prefix}/{suffix}'
         else:
-            log.warning("destination_key already exists, but source_key has no md5 hash")
-    except botocore.exceptions.ClientError as e:
-        if e.response['ResponseMetadata']['HTTPStatusCode'] != 404:
-            raise
+            destination_key = f'{suffix}'
 
-    temporary_file = secrets.token_hex(32)
+        gcs_client = google.cloud.storage.Client()
+        s3_client = boto3.client('s3')
 
-    bucket = gcs_client.bucket(source_bucket, user_project=project)
-    blob = bucket.blob(source_key)
-
-    try:
-        log.info(f'download {source_key} to {temporary_file}')
-        blob.download_to_filename(temporary_file)
-
-        s3_client.upload_file(Filename=temporary_file, Bucket=destination_bucket, Key=destination_key)
-    finally:
-        log.info(f'removing temporary file {temporary_file}')
         try:
-            os.remove(temporary_file)
-        except FileNotFoundError:
-            pass
+            destination_resp = s3_client.head_object(Bucket=destination_bucket, Key=destination_key)
+            if source_md5_hash is not None:
+                destination_etag = destination_resp['ETag'].strip('"')
+                if destination_etag == source_md5_hash:
+                    log.info(f"skipping {source_key} => {destination_key}, already exists")
+                    return
+                log.warning(f"destination_key already exists, but md5 hash doesn't match: {source_key} {source_md5_hash} vs {destination_key} {destination_etag}")
+            else:
+                log.warning("destination_key already exists, but source_key has no md5 hash")
+        except botocore.exceptions.ClientError as e:
+            if e.response['ResponseMetadata']['HTTPStatusCode'] != 404:
+                raise
+
+        temporary_file = secrets.token_hex(32)
+
+        bucket = gcs_client.bucket(source_bucket, user_project=project)
+        blob = bucket.blob(source_key)
+
+        try:
+            log.info(f'download {source_key} to {temporary_file}')
+            blob.download_to_filename(temporary_file)
+
+            log.info(f'upload {temporary_file} to {destination_key}')
+            s3_client.upload_file(Filename=temporary_file, Bucket=destination_bucket, Key=destination_key)
+        finally:
+            log.info(f'removing temporary file for {source_key} => {destination_key}: {temporary_file}')
+            try:
+                os.remove(temporary_file)
+            except FileNotFoundError:
+                pass
+    except Exception:
+        log.exception(f'sync_file for {source_key} failed')
 
 
 def error_callback(source_key, exc):
     log = logging.getLogger(__name__)
-    log.error(f'sync_file for {source_key} failed: {exc}')
+    log.error(f'async_apply sync_file for {source_key} called eror callback: {exc}')
 
 
 def sync_directory(
