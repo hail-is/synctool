@@ -13,10 +13,12 @@ parser.add_argument(
     '-p', '--parallelism', dest='parallelism',
     type=int,
     default=2 * os.cpu_count(),
-    help='Number of files to transfer in parallel.  Default is twice the CPU count.')
-parser.add_argument('source',
+    help="Number of files to transfer in parallel.  Default is twice the CPU count.")
+parser.add_argument('-s', '--safe', dest='safe', action='store_true',
+                    help="Don't overwrite files that exist in the destination.  Just skip.")
+parser.add_argument('source', metavar='SOURCE',
                     help="Source directory.  Must be a Google Storage URL.  Must not end in a trailing slash.")
-parser.add_argument('destination',
+parser.add_argument('destination', metavar='DESTINATION',
                     help="Destination directory.  Must be a AWS S3 URL.  Must not end in a trailing slash.")
 
 parsed_args = parser.parse_args()
@@ -53,4 +55,4 @@ if destination_path_prefix:
     assert destination_path_prefix.startswith('/')
     destination_path_prefix = destination_path_prefix[1:]
 
-sync_directory(parsed_args.project, parallelism, source_bucket, source_path_prefix, destination_bucket, destination_path_prefix)
+sync_directory(parsed_args.project, parallelism, parsed_args.safe, source_bucket, source_path_prefix, destination_bucket, destination_path_prefix)

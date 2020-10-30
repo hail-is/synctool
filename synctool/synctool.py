@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 def sync_file(
-        project,
+        project, safe,
         source_bucket, source_path_prefix,
         destination_bucket, destination_path_prefix,
         source_key, source_md5_hash):
@@ -40,14 +40,17 @@ def sync_file(
 
         try:
             destination_resp = s3_client.head_object(Bucket=destination_bucket, Key=destination_key)
+            if safe:
+                log.warning(f"safe mode, destination already exists, skipping: {destination_key}")
+                return
             if source_md5_hash is not None:
                 destination_etag = destination_resp['ETag'].strip('"')
                 if destination_etag == source_md5_hash:
-                    log.info(f"skipping {source_key} => {destination_key}, already exists")
+                    log.info(f"skipping {source_key}: destination exists and md5 hash matches")
                     return
-                log.warning(f"destination_key already exists, but md5 hash doesn't match: {source_key} {source_md5_hash} vs {destination_key} {destination_etag}")
+                log.warning(f"destination exists, but md5 hash doesn't match: {source_key} {source_md5_hash} vs {destination_key} {destination_etag}")
             else:
-                log.warning("destination_key already exists, but source_key has no md5 hash")
+                log.warning("destination already exists, but source has no md5 hash")
         except botocore.exceptions.ClientError as e:
             if e.response['ResponseMetadata']['HTTPStatusCode'] != 404:
                 raise
@@ -79,7 +82,7 @@ def error_callback(source_key, exc):
 
 
 def sync_directory(
-        project, parallelism,
+        project, parallelism, safe,
         source_bucket, source_path_prefix,
         destination_bucket, destination_path_prefix):
     assert not source_path_prefix.endswith('/')
@@ -106,7 +109,7 @@ def sync_directory(
             log.info(f'syncing {source_key} md5 {source_md5_hash}')
             pool.apply_async(
                 sync_file,
-                (project, source_bucket, source_path_prefix, destination_bucket, destination_path_prefix, source_key, source_md5_hash),
+                (project, safe, source_bucket, source_path_prefix, destination_bucket, destination_path_prefix, source_key, source_md5_hash),
                 error_callback=functools.partial(error_callback, source_key))
         pool.close()
         pool.join()
